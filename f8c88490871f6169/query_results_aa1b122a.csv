@@ -1,0 +1,6 @@
+id,patient_id,doctor_id,appointment_date,status,notes
+1,173,2,2025-06-10 12:00:00,No-Show,
+2,171,10,2026-03-09 17:45:00,Completed,
+3,159,13,2026-01-19 11:00:00,Cancelled,
+4,49,1,2025-09-02 10:45:00,Completed,
+5,199,10,2026-03-04 10:15:00,No-Show,

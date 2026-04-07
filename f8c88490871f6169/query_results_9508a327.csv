@@ -1,0 +1,26 @@
+id,patient_id,doctor_id,appointment_date,status,notes
+2,171,10,2026-03-09 17:45:00,Completed,
+5,199,10,2026-03-04 10:15:00,No-Show,
+13,136,4,2026-03-09 09:45:00,Completed,
+60,137,9,2026-03-27 16:30:00,Completed,
+64,168,14,2026-03-19 09:45:00,Completed,
+90,187,3,2026-03-13 17:45:00,Completed,Follow-up required
+99,53,5,2026-03-03 17:00:00,Cancelled,Follow-up required
+110,94,9,2026-03-14 15:15:00,Cancelled,Follow-up required
+111,86,5,2026-03-19 15:30:00,Cancelled,
+135,153,2,2026-03-29 13:30:00,Completed,
+144,69,12,2026-03-20 13:45:00,Cancelled,
+148,46,15,2026-03-17 16:45:00,No-Show,
+150,46,4,2026-03-12 14:00:00,Cancelled,Follow-up required
+156,37,12,2026-03-13 11:45:00,Completed,Follow-up required
+202,194,10,2026-03-04 14:45:00,Completed,Follow-up required
+247,84,12,2026-03-16 14:30:00,Completed,Follow-up required
+290,176,6,2026-03-08 08:30:00,No-Show,
+328,100,8,2026-03-12 08:30:00,No-Show,
+397,200,13,2026-03-31 14:30:00,Completed,
+403,133,3,2026-03-31 11:00:00,Completed,
+409,156,3,2026-03-14 16:00:00,Completed,
+468,153,4,2026-03-22 13:00:00,Completed,
+470,36,3,2026-03-19 14:00:00,Completed,Follow-up required
+476,157,9,2026-03-10 11:30:00,Cancelled,
+488,54,1,2026-03-07 13:00:00,Completed,

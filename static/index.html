@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Clinic AI — NL2SQL</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --surface2:  #1a2235;
+    --border:    #1e2d45;
+    --accent:    #00d4aa;
+    --accent2:   #3b82f6;
+    --danger:    #ef4444;
+    --text:      #e2e8f0;
+    --text-muted:#64748b;
+    --text-dim:  #334155;
+    --user-bg:   #1e3a5f;
+    --bot-bg:    #111827;
+    --radius:    16px;
+    --glow:      0 0 40px rgba(0,212,170,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,212,170,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(59,130,246,0.06) 0%, transparent 60%);
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 20px rgba(0,212,170,0.3);
+  }
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.3px;
+  }
+  .logo-text span { color: var(--accent); }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 14px;
+    background: rgba(0,212,170,0.08);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* ── Layout ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    background: rgba(17,24,39,0.5);
+  }
+  .sidebar-section h3 {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+  .suggestion-chip {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 12.5px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .suggestion-chip:hover {
+    background: rgba(0,212,170,0.08);
+    border-color: rgba(0,212,170,0.3);
+    color: var(--accent);
+    transform: translateX(3px);
+  }
+  .suggestion-chip .chip-icon {
+    display: inline-block;
+    margin-right: 6px;
+    font-size: 14px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat-card .val {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-card .lbl {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: block;
+  }
+
+  /* ── Chat area ── */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ── Messages ── */
+  .msg-row {
+    display: flex;
+    gap: 14px;
+    animation: fadeUp 0.35s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .msg-row.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .avatar.bot {
+    background: linear-gradient(135deg, rgba(0,212,170,0.2), rgba(59,130,246,0.2));
+    border: 1px solid rgba(0,212,170,0.3);
+  }
+  .avatar.user-av {
+    background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.2));
+    border: 1px solid rgba(59,130,246,0.3);
+  }
+
+  .bubble {
+    max-width: 72%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg-row.user .bubble { align-items: flex-end; }
+
+  .bubble-text {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 14.5px;
+    line-height: 1.65;
+    position: relative;
+  }
+  .msg-row.user .bubble-text {
+    background: var(--user-bg);
+    border: 1px solid rgba(59,130,246,0.25);
+    color: #c7d9f5;
+    border-top-right-radius: 4px;
+  }
+  .msg-row.bot .bubble-text {
+    background: var(--bot-bg);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+
+  /* ── SQL block ── */
+  .sql-block {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-family: 'DM Mono', monospace;
+    font-size: 12.5px;
+  }
+  .sql-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: rgba(0,212,170,0.05);
+    border-bottom: 1px solid var(--border);
+  }
+  .sql-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .copy-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { color: var(--accent); background: rgba(0,212,170,0.1); }
+  .sql-code {
+    padding: 14px;
+    color: #7dd3fc;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.6;
+  }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .table-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+  .table-title {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .row-badge {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 8px;
+    background: rgba(0,212,170,0.1);
+    color: var(--accent);
+    border-radius: 4px;
+  }
+  .table-scroll { overflow-x: auto; max-height: 300px; overflow-y: auto; }
+  .table-scroll::-webkit-scrollbar { height: 4px; width: 4px; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+    transition: background 0.15s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(0,212,170,0.04); }
+  tbody td {
+    padding: 10px 14px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  tbody td:first-child { color: var(--accent); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* ── Chart ── */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .chart-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .chart-inner { padding: 8px; }
+
+  /* ── Typing indicator ── */
+  .typing-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .typing-bubble {
+    padding: 14px 18px;
+    background: var(--bot-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-top-left-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .typing-dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: typingBounce 1.2s infinite;
+    opacity: 0.7;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingBounce {
+    0%,60%,100% { transform: translateY(0); }
+    30%          { transform: translateY(-6px); }
+  }
+
+  /* ── Input area ── */
+  .input-area {
+    padding: 20px 32px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(10,14,26,0.7);
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+  }
+  .input-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-row:focus-within {
+    border-color: rgba(0,212,170,0.4);
+    box-shadow: 0 0 0 3px rgba(0,212,170,0.06);
+  }
+  textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14.5px;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+  textarea::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0,212,170,0.25);
+  }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,212,170,0.4); }
+  .send-btn:active { transform: scale(0.97); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .send-btn svg { width: 18px; height: 18px; fill: white; }
+
+  .input-hint {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+  }
+  .input-hint kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+  }
+
+  /* ── Welcome screen ── */
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 40px;
+    text-align: center;
+  }
+  .welcome-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(59,130,246,0.15));
+    border: 1px solid rgba(0,212,170,0.25);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+    box-shadow: 0 0 40px rgba(0,212,170,0.1);
+  }
+  .welcome h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .welcome h2 span { color: var(--accent); }
+  .welcome p {
+    color: var(--text-muted);
+    font-size: 15px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+  .welcome-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 560px;
+    margin-top: 8px;
+  }
+  .welcome-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .welcome-chip:hover {
+    background: rgba(0,212,170,0.1);
+    border-color: rgba(0,212,170,0.35);
+    color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  /* ── Error msg ── */
+  .error-bubble {
+    padding: 12px 16px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 10px;
+    color: #fca5a5;
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Scrollbar for sidebar ── */
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .messages { padding: 16px; }
+    .input-area { padding: 12px 16px 16px; }
+    .bubble { max-width: 90%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏥</div>
+    <div>
+      <div class="logo-text">Clinic<span>AI</span></div>
+      <div style="font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace;">NL → SQL · Powered by Gemini</div>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot"></div>
+    <span id="statusText">Connected</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <h3>📊 Database Stats</h3>
+      <div class="stats-grid">
+        <div class="stat-card"><span class="val">200</span><span class="lbl">Patients</span></div>
+        <div class="stat-card"><span class="val">15</span><span class="lbl">Doctors</span></div>
+        <div class="stat-card"><span class="val">500</span><span class="lbl">Appointments</span></div>
+        <div class="stat-card"><span class="val">300</span><span class="lbl">Invoices</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>💡 Try These</h3>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="How many patients do we have?">
+        <span class="chip-icon">👥</span>How many patients do we have?
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Which doctor has the most appointments?">
+        <span class="chip-icon">🏆</span>Busiest doctor?
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="What is the total revenue?">
+        <span class="chip-icon">💰</span>Total revenue?
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Top 5 patients by spending">
+        <span class="chip-icon">📈</span>Top 5 spenders
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Show unpaid invoices">
+        <span class="chip-icon">🔴</span>Unpaid invoices
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Average treatment cost by specialization">
+        <span class="chip-icon">💊</span>Avg cost by specialty
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Which city has the most patients?">
+        <span class="chip-icon">🏙️</span>Top patient city
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Show monthly appointment count for the past 6 months">
+        <span class="chip-icon">📅</span>Monthly appointments
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="What percentage of appointments are no-shows?">
+        <span class="chip-icon">❌</span>No-show rate?
+      </button>
+      <button class="suggestion-chip" onclick="askQuestion(this.dataset.q)" data-q="Compare revenue between departments">
+        <span class="chip-icon">🏥</span>Revenue by department
+      </button>
+    </div>
+  </aside>
+
+  <!-- Chat -->
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <!-- Welcome screen -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🧬</div>
+        <h2>Ask anything about your <span>clinic data</span></h2>
+        <p>Type a question in plain English and I'll generate SQL, run it, and show you the results instantly.</p>
+        <div class="welcome-chips">
+          <span class="welcome-chip" onclick="askQuestion(this.textContent)">How many patients do we have?</span>
+          <span class="welcome-chip" onclick="askQuestion(this.textContent)">Which doctor has the most appointments?</span>
+          <span class="welcome-chip" onclick="askQuestion(this.textContent)">What is the total revenue?</span>
+          <span class="welcome-chip" onclick="askQuestion(this.textContent)">Top 5 patients by spending</span>
+          <span class="welcome-chip" onclick="askQuestion(this.textContent)">Show revenue by doctor</span>
+          <span class="welcome-chip" onclick="askQuestion(this.textContent)">List patients with overdue invoices</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-row">
+        <textarea
+          id="questionInput"
+          placeholder="Ask a question about the clinic data..."
+          rows="1"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendQuestion()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Press <kbd>Enter</kbd> to send &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> for new line</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '';  // same origin
+
+let chartCounter = 0;
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuestion();
+  }
+}
+
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  m.scrollTop = m.scrollHeight;
+}
+
+function hideWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.remove();
+}
+
+function askQuestion(q) {
+  document.getElementById('questionInput').value = q;
+  sendQuestion();
+}
+
+function addUserMessage(text) {
+  hideWelcome();
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `
+    <div class="avatar user-av">👤</div>
+    <div class="bubble">
+      <div class="bubble-text">${escapeHtml(text)}</div>
+    </div>`;
+  msgs.appendChild(row);
+  scrollBottom();
+}
+
+function addTyping() {
+  hideWelcome();
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'typing-row';
+  row.id = 'typingIndicator';
+  row.innerHTML = `
+    <div class="avatar bot">🤖</div>
+    <div class="typing-bubble">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>`;
+  msgs.appendChild(row);
+  scrollBottom();
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function buildBotMessage(data) {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+
+  let inner = '';
+
+  // Clean message — remove internal noise
+  const cleanMsg = cleanMessage(data.message || '');
+  if (cleanMsg) {
+    inner += `<div class="bubble-text">${escapeHtml(cleanMsg)}</div>`;
+  }
+
+  // SQL block
+  if (data.sql_query) {
+    inner += `
+      <div class="sql-block">
+        <div class="sql-header">
+          <span class="sql-label">⚡ Generated SQL</span>
+          <button class="copy-btn" onclick="copySQL(this, \`${escapeTick(data.sql_query)}\`)">Copy</button>
+        </div>
+        <div class="sql-code">${highlightSQL(data.sql_query)}</div>
+      </div>`;
+  }
+
+  // Table
+  if (data.columns && data.rows && data.rows.length > 0) {
+    const headers = data.columns.map(c =>
+      `<th>${escapeHtml(String(c))}</th>`).join('');
+    const bodyRows = data.rows.map(r =>
+      `<tr>${r.map(cell => `<td>${escapeHtml(String(cell ?? ''))}</td>`).join('')}</tr>`
+    ).join('');
+    inner += `
+      <div class="table-wrap">
+        <div class="table-header-bar">
+          <span class="table-title">📋 Results</span>
+          <span class="row-badge">${data.row_count} row${data.row_count !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="table-scroll">
+          <table><thead><tr>${headers}</tr></thead><tbody>${bodyRows}</tbody></table>
+        </div>
+      </div>`;
+  } else if (data.sql_query && data.row_count === 0) {
+    inner += `<div class="error-bubble">ℹ️ Query ran successfully but returned no results.</div>`;
+  }
+
+  // Chart
+  if (data.chart && data.chart.data) {
+    const cid = 'chart_' + (++chartCounter);
+    inner += `
+      <div class="chart-wrap">
+        <div class="chart-header">📊 Visualization · ${data.chart_type || 'chart'}</div>
+        <div class="chart-inner"><div id="${cid}" style="width:100%;height:320px;"></div></div>
+      </div>`;
+    // render after DOM insert
+    setTimeout(() => renderChart(cid, data.chart), 50);
+  }
+
+  // Error
+  if (data.error && !data.sql_query) {
+    inner += `<div class="error-bubble">⚠️ ${escapeHtml(data.error)}</div>`;
+  }
+
+  row.innerHTML = `<div class="avatar bot">🤖</div><div class="bubble">${inner}</div>`;
+  msgs.appendChild(row);
+  scrollBottom();
+}
+
+function renderChart(id, chart) {
+  try {
+    const layout = Object.assign({
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor:  'rgba(0,0,0,0)',
+      font: { color: '#94a3b8', family: 'DM Sans' },
+      margin: { t: 30, r: 20, b: 40, l: 50 },
+      xaxis: { gridcolor: '#1e2d45', zerolinecolor: '#1e2d45' },
+      yaxis: { gridcolor: '#1e2d45', zerolinecolor: '#1e2d45' },
+    }, chart.layout || {});
+
+    // Apply brand colors to traces
+    const colors = ['#00d4aa','#3b82f6','#f59e0b','#ef4444','#8b5cf6'];
+    const traces = (chart.data || []).map((t, i) => {
+      const trace = Object.assign({}, t);
+      if (!trace.marker) trace.marker = {};
+      if (!trace.marker.color) trace.marker.color = colors[i % colors.length];
+      if (trace.type === 'line' || trace.mode?.includes('lines')) {
+        trace.line = Object.assign({ color: colors[i % colors.length] }, trace.line || {});
+      }
+      return trace;
+    });
+
+    Plotly.newPlot(id, traces, layout, { responsive: true, displayModeBar: false });
+  } catch(e) {
+    console.error('Chart render error:', e);
+  }
+}
+
+async function sendQuestion() {
+  const input = document.getElementById('questionInput');
+  const btn   = document.getElementById('sendBtn');
+  const q = input.value.trim();
+  if (!q) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  btn.disabled = true;
+
+  addUserMessage(q);
+  addTyping();
+
+  try {
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q })
+    });
+    const data = await res.json();
+    removeTyping();
+    if (res.status === 429) {
+      buildBotMessage({ message: 'Rate limit reached. Please wait a moment and try again.', error: 'rate_limit' });
+    } else {
+      buildBotMessage(data);
+    }
+  } catch(err) {
+    removeTyping();
+    buildBotMessage({ message: 'Could not reach the server. Make sure the API is running on port 8000.', error: err.message });
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function cleanMessage(msg) {
+  // Strip internal agent noise lines
+  const noisePatterns = [
+    /^Processing your request\.\.\./,
+    /^Tool completed successfully/,
+    /^No similar tool usage patterns found/,
+    /^Searched agent memory/,
+    /Results saved to file:/,
+    /IMPORTANT: FOR VISUALIZE_DATA/,
+    /^Saved to memory/,
+    /^Response complete/,
+    /query_results_.*\.csv/,
+  ];
+  const lines = msg.split('\n').filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    return !noisePatterns.some(p => p.test(trimmed));
+  });
+  return lines.join('\n').trim();
+}
+
+function highlightSQL(sql) {
+  const keywords = ['SELECT','FROM','WHERE','JOIN','LEFT','RIGHT','INNER','OUTER',
+    'ON','GROUP BY','ORDER BY','HAVING','LIMIT','COUNT','SUM','AVG','MAX','MIN',
+    'AS','AND','OR','NOT','IN','LIKE','BETWEEN','CASE','WHEN','THEN','ELSE','END',
+    'DISTINCT','WITH','UNION','INSERT','UPDATE','DELETE','ROUND','STRFTIME','DATE'];
+  let h = escapeHtml(sql);
+  keywords.forEach(kw => {
+    const re = new RegExp(`\\b(${kw})\\b`, 'gi');
+    h = h.replace(re, `<span style="color:#c084fc">$1</span>`);
+  });
+  // strings
+  h = h.replace(/'([^']*)'/g, `<span style="color:#86efac">'$1'</span>`);
+  // numbers
+  h = h.replace(/\b(\d+)\b/g, `<span style="color:#fbbf24">$1</span>`);
+  return h;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function escapeTick(s) {
+  return String(s).replace(/`/g,'\\`').replace(/\$/g,'\\$');
+}
+
+async function copySQL(btn, sql) {
+  try {
+    await navigator.clipboard.writeText(sql);
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  } catch(e) {
+    btn.textContent = 'Copy';
+  }
+}
+
+// Check health on load
+(async () => {
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      document.getElementById('statusText').textContent =
+        `Live · ${d.agent_memory_items} memories`;
+    }
+  } catch(e) {
+    document.getElementById('statusText').textContent = 'Offline';
+    document.querySelector('.status-dot').style.background = '#ef4444';
+  }
+})();
+</script>
+</body>
+</html>

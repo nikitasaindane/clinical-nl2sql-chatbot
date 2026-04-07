@@ -1,0 +1,16 @@
+# Core AI framework
+vanna>=2.0.0
+
+# Web API
+fastapi
+uvicorn[standard]
+
+# Data & visualisation
+plotly
+pandas
+
+# Environment variables
+python-dotenv
+
+# LLM Provider: Google Gemini (Option A — free via AI Studio)
+google-genai
