@@ -71,7 +71,7 @@ nl2sql_project/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/nl2sql-clinic.git
+git clone https://github.com/nikitasaindane/clinical-nl2sql-chatbot.git
 cd nl2sql-clinic
 ```
 
