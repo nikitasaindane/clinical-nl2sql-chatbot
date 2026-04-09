@@ -72,7 +72,7 @@ nl2sql_project/
 
 ```bash
 git clone https://github.com/nikitasaindane/clinical-nl2sql-chatbot.git
-cd nl2sql-clinic
+cd clinical-nl2sql-chatbot
 ```
 
 ### 2. Create a virtual environment
